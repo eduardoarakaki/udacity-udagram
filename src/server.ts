@@ -1,6 +1,6 @@
-import express from 'express';
 import bodyParser from 'body-parser';
-import {filterImageFromURL, deleteLocalFiles} from './util/util';
+import express, { Request, Response } from 'express';
+import { deleteLocalFiles, filterImageFromURL } from './util/util';
 
 (async () => {
 
@@ -9,7 +9,7 @@ import {filterImageFromURL, deleteLocalFiles} from './util/util';
 
   // Set the network port
   const port = process.env.PORT || 8082;
-  
+
   // Use the body parser middleware for post requests
   app.use(bodyParser.json());
 
@@ -30,17 +30,54 @@ import {filterImageFromURL, deleteLocalFiles} from './util/util';
   /**************************************************************************** */
 
   //! END @TODO1
-  
+
   // Root Endpoint
   // Displays a simple message to the user
-  app.get( "/", async ( req, res ) => {
+  app.get("/", async (req, res) => {
     res.send("try GET /filteredimage?image_url={{}}")
-  } );
-  
+  });
+
+  app.get("/filteredimage", async (req: Request, res: Response) => {
+    let { image_url } = req.query;
+
+    if (!image_url) {
+      return res.status(400).send({ error: "image_url is required", status: 400 });
+    }
+
+    if (!isURL(image_url) || !isIMG(image_url)) {
+      return res.status(406).send({ error: "URL is not valid.", status: 500 })
+    }
+
+    try {
+      const imagelUrl = await filterImageFromURL(image_url)
+      res.status(200).sendFile(imagelUrl, (error) => {
+        deleteLocalFiles([imagelUrl])
+        if (error) {
+          res.status(422).send("The server has encountered an error while returning the filtered image.")
+        }
+      });
+    } catch (error) {
+      return res.status(500).send({ error: "Internal error. ", status: 500 })
+    }
+  });
+
+  const isURL = (imageURL: string) => {
+    var pattern = new RegExp('^(https?:\\/\\/)?' + // protocol
+      '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|' + // domain name
+      '((\\d{1,3}\\.){3}\\d{1,3}))' + // OR ip (v4) address
+      '(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*' + // port and path
+      '(\\?[;&a-z\\d%_.~+=-]*)?' + // query string
+      '(\\#[-a-z\\d_]*)?$', 'i'); // fragment locator
+    return !!pattern.test(imageURL);
+  }
+
+  const isIMG = (imageURL: string) => {
+    return (imageURL.match(/\.(jpeg|jpg|gif|png)$/) != null);
+  }
 
   // Start the Server
-  app.listen( port, () => {
-      console.log( `server running http://localhost:${ port }` );
-      console.log( `press CTRL+C to stop server` );
-  } );
+  app.listen(port, () => {
+    console.log(`server running http://localhost:${port}`);
+    console.log(`press CTRL+C to stop server`);
+  });
 })();
