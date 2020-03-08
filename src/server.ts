@@ -45,7 +45,7 @@ import { deleteLocalFiles, filterImageFromURL } from './util/util';
     }
 
     if (!isURL(image_url) || !isIMG(image_url)) {
-      return res.status(406).send({ error: "URL is not valid.", status: 500 })
+      return res.status(406).send({ error: "URL is not valid.", status: 406 })
     }
 
     try {
@@ -53,7 +53,7 @@ import { deleteLocalFiles, filterImageFromURL } from './util/util';
       res.status(200).sendFile(imagelUrl, (error) => {
         deleteLocalFiles([imagelUrl])
         if (error) {
-          res.status(422).send("The server has encountered an error while returning the filtered image.")
+          res.status(422).send({ error: "The server has encountered an error while returning the filtered image.", status: 422 })
         }
       });
     } catch (error) {
